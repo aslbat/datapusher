@@ -26,7 +26,13 @@ CHUNK_INSERT_ROWS = int(os.environ.get('DATAPUSHER_CHUNK_INSERT_ROWS', '250'))
 DOWNLOAD_TIMEOUT = int(os.environ.get('DATAPUSHER_DOWNLOAD_TIMEOUT', '30'))
 
 # Verify SSL
-SSL_VERIFY = os.environ.get('DATAPUSHER_SSL_VERIFY', True)
+
+# Prevent overlappung with CKAN SSL_VERIFY
+# global DATAPUSHER_SSL_VERIFY
+DATAPUSHER_SSL_VERIFY = os.environ.get('DATAPUSHER_SSL_VERIFY', True)
+
+# JWT API KEY
+DATAPUSHER_AUTH_JWT_TOKEN = os.environ.get('DATAPUSHER_AUTH_JWT_TOKEN')
 
 # logging
 #LOG_FILE = '/tmp/ckan_service.log'

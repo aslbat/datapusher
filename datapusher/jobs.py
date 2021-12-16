@@ -37,12 +37,12 @@ USE_PROXY = 'DOWNLOAD_PROXY' in web.app.config
 if USE_PROXY:
     DOWNLOAD_PROXY = web.app.config.get('DOWNLOAD_PROXY')
 
-if web.app.config.get('SSL_VERIFY') in ['False', 'FALSE', '0', False, 0]:
-    SSL_VERIFY = False
+if web.app.config.get('DATAPUSHER_SSL_VERIFY') in ['False', 'FALSE', '0', False, 0]:
+    DATAPUSHER_SSL_VERIFY = False
 else:
-    SSL_VERIFY = True
+    DATAPUSHER_SSL_VERIFY = True
 
-if not SSL_VERIFY:
+if not DATAPUSHER_SSL_VERIFY:
     requests.packages.urllib3.disable_warnings()
 
 _TYPE_MAPPING = {
@@ -198,15 +198,15 @@ class DatastoreEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
-def delete_datastore_resource(resource_id, api_key, ckan_url):
+def delete_datastore_resource(resource_id, DATAPUSHER_AUTH_JWT_TOKEN, ckan_url):
     try:
         delete_url = get_url('datastore_delete', ckan_url)
         response = requests.post(delete_url,
-                                 verify=SSL_VERIFY,
+                                 verify=DATAPUSHER_SSL_VERIFY,
                                  data=json.dumps({'id': resource_id,
                                                   'force': True}),
                                  headers={'Content-Type': 'application/json',
-                                          'Authorization': api_key}
+                                          'Authorization': DATAPUSHER_AUTH_JWT_TOKEN}
                                  )
         check_response(response, delete_url, 'CKAN',
                        good_status=(201, 200, 404), ignore_no_success=True)
@@ -214,15 +214,15 @@ def delete_datastore_resource(resource_id, api_key, ckan_url):
         raise util.JobError('Deleting existing datastore failed.')
 
 
-def datastore_resource_exists(resource_id, api_key, ckan_url):
+def datastore_resource_exists(resource_id, DATAPUSHER_AUTH_JWT_TOKEN, ckan_url):
     try:
         search_url = get_url('datastore_search', ckan_url)
         response = requests.post(search_url,
-                                 verify=SSL_VERIFY,
+                                 verify=DATAPUSHER_SSL_VERIFY,
                                  data=json.dumps({'id': resource_id,
                                          'limit': 0}),
                                  headers={'Content-Type': 'application/json',
-                                          'Authorization': api_key}
+                                          'Authorization': DATAPUSHER_AUTH_JWT_TOKEN}
                                  )
         if response.status_code == 404:
             return False
@@ -239,7 +239,7 @@ def datastore_resource_exists(resource_id, api_key, ckan_url):
 
 
 def send_resource_to_datastore(resource, headers, records,
-                               is_it_the_last_chunk, api_key, ckan_url):
+                               is_it_the_last_chunk, DATAPUSHER_AUTH_JWT_TOKEN, ckan_url):
     """
     Stores records in CKAN datastore
     """
@@ -251,15 +251,15 @@ def send_resource_to_datastore(resource, headers, records,
 
     url = get_url('datastore_create', ckan_url)
     r = requests.post(url,
-                      verify=SSL_VERIFY,
+                      verify=DATAPUSHER_SSL_VERIFY,
                       data=json.dumps(request, cls=DatastoreEncoder),
                       headers={'Content-Type': 'application/json',
-                               'Authorization': api_key}
+                               'Authorization': DATAPUSHER_AUTH_JWT_TOKEN}
                       )
     check_response(r, url, 'CKAN DataStore')
 
 
-def update_resource(resource, api_key, ckan_url):
+def update_resource(resource, DATAPUSHER_AUTH_JWT_TOKEN, ckan_url):
     """
     Update webstore_url and webstore_last_updated in CKAN
     """
@@ -269,25 +269,25 @@ def update_resource(resource, api_key, ckan_url):
     url = get_url('resource_update', ckan_url)
     r = requests.post(
         url,
-        verify=SSL_VERIFY,
+        verify=DATAPUSHER_SSL_VERIFY,
         data=json.dumps(resource),
         headers={'Content-Type': 'application/json',
-                 'Authorization': api_key}
+                 'Authorization': DATAPUSHER_AUTH_JWT_TOKEN}
     )
 
     check_response(r, url, 'CKAN')
 
 
-def get_resource(resource_id, ckan_url, api_key):
+def get_resource(resource_id, ckan_url, DATAPUSHER_AUTH_JWT_TOKEN):
     """
     Gets available information about the resource from CKAN
     """
     url = get_url('resource_show', ckan_url)
     r = requests.post(url,
-                      verify=SSL_VERIFY,
+                      verify=DATAPUSHER_SSL_VERIFY,
                       data=json.dumps({'id': resource_id}),
                       headers={'Content-Type': 'application/json',
-                               'Authorization': api_key}
+                               'Authorization': DATAPUSHER_AUTH_JWT_TOKEN}
                       )
     check_response(r, url, 'CKAN')
 
@@ -305,9 +305,6 @@ def validate_input(input):
         raise util.JobError('No id provided.')
     if 'ckan_url' not in data:
         raise util.JobError('No ckan_url provided.')
-    if not input.get('api_key'):
-        raise util.JobError('No CKAN API key provided')
-
 
 @job.asynchronous
 def push_to_datastore(task_id, input, dry_run=False):
@@ -334,14 +331,13 @@ def push_to_datastore(task_id, input, dry_run=False):
 
     ckan_url = data['ckan_url']
     resource_id = data['resource_id']
-    api_key = input.get('api_key')
 
     try:
-        resource = get_resource(resource_id, ckan_url, api_key)
+        resource = get_resource(resource_id, ckan_url, DATAPUSHER_AUTH_JWT_TOKEN)
     except util.JobError as e:
         # try again in 5 seconds just incase CKAN is slow at adding resource
         time.sleep(5)
-        resource = get_resource(resource_id, ckan_url, api_key)
+        resource = get_resource(resource_id, ckan_url, DATAPUSHER_AUTH_JWT_TOKEN)
 
     # check if the resource url_type is a datastore
     if resource.get('url_type') == 'datastore':
@@ -362,10 +358,10 @@ def push_to_datastore(task_id, input, dry_run=False):
     if resource.get('url_type') == 'upload':
         # If this is an uploaded file to CKAN, authenticate the request,
         # otherwise we won't get file from private resources
-        headers['Authorization'] = api_key
+        headers['Authorization'] = DATAPUSHER_AUTH_JWT_TOKEN
     try:
         kwargs = {'headers': headers, 'timeout': DOWNLOAD_TIMEOUT,
-                  'verify': SSL_VERIFY, 'stream': True}
+                  'verify': DATAPUSHER_SSL_VERIFY, 'stream': True}
         if USE_PROXY:
             kwargs['proxies'] = {'http': DOWNLOAD_PROXY, 'https': DOWNLOAD_PROXY}
         response = requests.get(url, **kwargs)
@@ -431,7 +427,7 @@ def push_to_datastore(task_id, input, dry_run=False):
     row_set = get_row_set(table_set)
     offset, headers = messytables.headers_guess(row_set.sample)
 
-    existing = datastore_resource_exists(resource_id, api_key, ckan_url)
+    existing = datastore_resource_exists(resource_id, DATAPUSHER_AUTH_JWT_TOKEN, ckan_url)
     existing_info = None
     if existing:
         existing_info = dict((f['id'], f['info'])
@@ -483,7 +479,7 @@ def push_to_datastore(task_id, input, dry_run=False):
     if existing:
         logger.info('Deleting "{res_id}" from datastore.'.format(
             res_id=resource_id))
-        delete_datastore_resource(resource_id, api_key, ckan_url)
+        delete_datastore_resource(resource_id, DATAPUSHER_AUTH_JWT_TOKEN, ckan_url)
 
     headers_dicts = [dict(id=field[0], type=TYPE_MAPPING[str(field[1])])
                      for field in zip(headers, types)]
@@ -511,10 +507,10 @@ def push_to_datastore(task_id, input, dry_run=False):
         logger.info('Saving chunk {number} {is_last}'.format(
             number=i, is_last='(last)' if is_it_the_last_chunk else ''))
         send_resource_to_datastore(resource, headers_dicts, records,
-                                   is_it_the_last_chunk, api_key, ckan_url)
+                                   is_it_the_last_chunk, DATAPUSHER_AUTH_JWT_TOKEN, ckan_url)
 
     logger.info('Successfully pushed {n} entries to "{res_id}".'.format(
         n=count, res_id=resource_id))
 
     if data.get('set_url_type', False):
-        update_resource(resource, api_key, ckan_url)
+        update_resource(resource, DATAPUSHER_AUTH_JWT_TOKEN, ckan_url)
