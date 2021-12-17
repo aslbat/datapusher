@@ -29,11 +29,15 @@ if locale.getdefaultlocale()[0]:
 else:
     locale.setlocale(locale.LC_ALL, '')
 
+DATAPUSHER_SSL_VERIFY = web.app.config.get('DATAPUSHER_SSL_VERIFY', True)
+DATAPUSHER_AUTH_JWT_TOKEN = web.app.config.get('DATAPUSHER_AUTH_JWT_TOKEN')
+
 MAX_CONTENT_LENGTH = web.app.config.get('MAX_CONTENT_LENGTH') or 10485760
 CHUNK_SIZE = web.app.config.get('CHUNK_SIZE') or 16384
 CHUNK_INSERT_ROWS = web.app.config.get('CHUNK_INSERT_ROWS') or 250
 DOWNLOAD_TIMEOUT = web.app.config.get('DOWNLOAD_TIMEOUT') or 30
 USE_PROXY = 'DOWNLOAD_PROXY' in web.app.config
+
 if USE_PROXY:
     DOWNLOAD_PROXY = web.app.config.get('DOWNLOAD_PROXY')
 

@@ -35,4 +35,5 @@ DATAPUSHER_SSL_VERIFY = os.environ.get('DATAPUSHER_SSL_VERIFY', True)
 DATAPUSHER_AUTH_JWT_TOKEN = os.environ.get('DATAPUSHER_AUTH_JWT_TOKEN')
 
 # logging
-#LOG_FILE = '/tmp/ckan_service.log'
+# LOG_FILE = '/tmp/ckan_service.log'
+STDERR = True
