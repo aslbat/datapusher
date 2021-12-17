@@ -14,8 +14,6 @@ services:
     ports:
       - "0.0.0.0:8800:8800"
     environment:
-      # API FOR USER default (same name of ckan.site_id)
-      - DATAPUSHER_AUTH_JWT_TOKEN=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJFVXJFSnJuNnFEaXdTcXRxY2I1Y3lsZndzVEo3U3YzWjQtakcyNWE4SkZrIiwiaWF0IjoxNjM5NjQ2MDQ4fQ.Pq4mewYCCVim8FQQfMxOnq_8SZuIuD0jmTCo46gDZR4
       - DATAPUSHER_HOST=0.0.0.0
       - DATAPUSHER_PORT=8800
       - DATAPUSHER_SQLALCHEMY_DATABASE_URI=sqlite:////tmp/job_store.db
