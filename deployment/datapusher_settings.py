@@ -32,8 +32,8 @@ DOWNLOAD_TIMEOUT = int(os.environ.get('DATAPUSHER_DOWNLOAD_TIMEOUT', '30'))
 DATAPUSHER_SSL_VERIFY = os.environ.get('DATAPUSHER_SSL_VERIFY', True)
 
 # JWT API KEY
-DATAPUSHER_AUTH_JWT_TOKEN = os.environ.get('DATAPUSHER_AUTH_JWT_TOKEN')
+DATAPUSHER_AUTH_JWT_TOKEN = os.environ.get('DATAPUSHER_AUT__H_JWT_TOKEN')
 
 # logging
-# LOG_FILE = '/tmp/ckan_service.log'
+# LOG_FILE = '/tmp/datapusher_service.log'
 STDERR = True

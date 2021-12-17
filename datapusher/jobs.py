@@ -49,6 +49,12 @@ else:
 if not DATAPUSHER_SSL_VERIFY:
     requests.packages.urllib3.disable_warnings()
 
+if DATAPUSHER_AUTH_JWT_TOKEN is None:
+    logging.error("\n\n**********************************************************************************************************\n\n")
+    logging.error("Please create a new JWT token in CKAN for default user (same name as ckan.site_id) and set environment variable DATAPUSHER_AUTH_JWT_TOKEN in datapusher")
+    logging.error("\n\n**********************************************************************************************************\n\n")
+    raise Exception("Please create a new JWT token in CKAN for default user (same name as ckan.site_id) and set environment variable DATAPUSHER_AUTH_JWT_TOKEN in datapusher")
+
 _TYPE_MAPPING = {
     'String': 'text',
     # 'int' may not be big enough,
@@ -324,10 +330,14 @@ def push_to_datastore(task_id, input, dry_run=False):
     :type dry_run: boolean
 
     '''
+
     handler = util.StoringHandler(task_id, input)
     logger = logging.getLogger(task_id)
     logger.addHandler(handler)
     logger.setLevel(logging.DEBUG)
+
+    logger.debug("DATAPUSHER_AUTH_JWT_TOKEN %s" % DATAPUSHER_AUTH_JWT_TOKEN)
+    logger.debug("DATAPUSHER_SSL_VERIFY %s" % DATAPUSHER_SSL_VERIFY)
 
     validate_input(input)
 
