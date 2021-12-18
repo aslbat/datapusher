@@ -16,6 +16,7 @@ import decimal
 import hashlib
 import time
 import tempfile
+import sys
 
 import messytables
 
@@ -35,6 +36,17 @@ CHUNK_SIZE = web.app.config.get('CHUNK_SIZE') or 16384
 CHUNK_INSERT_ROWS = web.app.config.get('CHUNK_INSERT_ROWS') or 250
 DOWNLOAD_TIMEOUT = web.app.config.get('DOWNLOAD_TIMEOUT') or 30
 USE_PROXY = 'DOWNLOAD_PROXY' in web.app.config
+
+DATAPUSHER_LOGGING_LEVEL   = web.app.config.get('DATAPUSHER_LOGGING_LEVEL', logging.INFO)
+DATAPUSHER_LOGGING_HANDLER = web.app.config.get('DATAPUSHER_LOGGING_HANDLER', logging.StreamHandler(sys.stdout))
+
+datapusher_logger = logging.getLogger("DATAPUSHER SERVICE")
+datapusher_logger_handler = DATAPUSHER_LOGGING_HANDLER
+datapusher_logger.setLevel(DATAPUSHER_LOGGING_LEVEL)
+datapusher_logger_handler.setLevel(DATAPUSHER_LOGGING_LEVEL)
+datapusher_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+datapusher_logger_handler.setFormatter(datapusher_formatter)
+datapusher_logger.addHandler(datapusher_logger_handler)
 
 if USE_PROXY:
     DOWNLOAD_PROXY = web.app.config.get('DOWNLOAD_PROXY')
@@ -325,20 +337,32 @@ def push_to_datastore(task_id, input, dry_run=False):
     :type dry_run: boolean
 
     '''
+    datapusher_logger.debug("Executing push_to_datastore job")
+    datapusher_logger.debug("DATAPUSHER_SSL_VERIFY %s" % DATAPUSHER_SSL_VERIFY)
 
+    # This response_logger is used to report job result to ckan, use datapusher_logger as service logger
     handler = util.StoringHandler(task_id, input)
-    logger = logging.getLogger(task_id)
-    logger.addHandler(handler)
-    logger.setLevel(logging.DEBUG)
-    logger.debug("DATAPUSHER_SSL_VERIFY %s" % DATAPUSHER_SSL_VERIFY)
+    response_logger = logging.getLogger(task_id)
+    response_logger.addHandler(handler)
+    response_logger.setLevel(logging.DEBUG)
 
     validate_input(input)
 
     data = input['metadata']
 
     ckan_url = data['ckan_url']
+
+    # See ckan/ckanext/datapusher/logic/action.py
+    # See https://github.com/ckan/ckan-service-provider/blob/master/ckanserviceprovider/web.py
+    callback_url = input.get('result_url')
+
     resource_id = data['resource_id']
     api_key = input.get('api_key')
+
+    datapusher_logger.debug("callback_url: %s" % callback_url)
+    datapusher_logger.debug("resource_id: %s" % resource_id)
+    datapusher_logger.debug("api_key: %s............" % api_key[0:8])
+    datapusher_logger.debug("ckan_url: %s" % ckan_url)
 
     try:
         resource = get_resource(resource_id, ckan_url, api_key)
@@ -349,7 +373,7 @@ def push_to_datastore(task_id, input, dry_run=False):
 
     # check if the resource url_type is a datastore
     if resource.get('url_type') == 'datastore':
-        logger.info('Dump files are managed with the Datastore API')
+        response_logger.info('Dump files are managed with the Datastore API')
         return
 
     # check scheme
@@ -361,7 +385,7 @@ def push_to_datastore(task_id, input, dry_run=False):
         )
 
     # fetch the resource data
-    logger.info('Fetching from: {0}'.format(url))
+    response_logger.info('Fetching from: {0}'.format(url))
     headers = {}
     if resource.get('url_type') == 'upload':
         # If this is an uploaded file to CKAN, authenticate the request,
@@ -413,7 +437,7 @@ def push_to_datastore(task_id, input, dry_run=False):
 
     if (resource.get('hash') == file_hash
             and not data.get('ignore_hash')):
-        logger.info("The file hash hasn't changed: {hash}.".format(
+        response_logger.info("The file hash hasn't changed: {hash}.".format(
             hash=file_hash))
         return
 
@@ -485,7 +509,7 @@ def push_to_datastore(task_id, input, dry_run=False):
     the fields have significantly changed, it may also fail.
     '''
     if existing:
-        logger.info('Deleting "{res_id}" from datastore.'.format(
+        response_logger.info('Deleting "{res_id}" from datastore.'.format(
             res_id=resource_id))
         delete_datastore_resource(resource_id, api_key, ckan_url)
 
@@ -502,7 +526,7 @@ def push_to_datastore(task_id, input, dry_run=False):
                 if type_override in list(_TYPE_MAPPING.values()):
                     h['type'] = type_override
 
-    logger.info('Determined headers and types: {headers}'.format(
+    response_logger.info('Determined headers and types: {headers}'.format(
         headers=headers_dicts))
 
     if dry_run:
@@ -512,12 +536,12 @@ def push_to_datastore(task_id, input, dry_run=False):
     for i, chunk in enumerate(chunky(result, CHUNK_INSERT_ROWS)):
         records, is_it_the_last_chunk = chunk
         count += len(records)
-        logger.info('Saving chunk {number} {is_last}'.format(
+        response_logger.info('Saving chunk {number} {is_last}'.format(
             number=i, is_last='(last)' if is_it_the_last_chunk else ''))
         send_resource_to_datastore(resource, headers_dicts, records,
                                    is_it_the_last_chunk, api_key, ckan_url)
 
-    logger.info('Successfully pushed {n} entries to "{res_id}".'.format(
+    response_logger.info('Successfully pushed {n} entries to "{res_id}".'.format(
         n=count, res_id=resource_id))
 
     if data.get('set_url_type', False):
