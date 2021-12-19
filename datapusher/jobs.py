@@ -357,12 +357,18 @@ def push_to_datastore(task_id, input, dry_run=False):
     callback_url = input.get('result_url')
 
     resource_id = data['resource_id']
+    original_url = data.get('original_url', None)
+    original_base_url = data.get('original_base_url', '')
+
     api_key = input.get('api_key')
 
     datapusher_logger.debug("callback_url: %s" % callback_url)
     datapusher_logger.debug("resource_id: %s" % resource_id)
     datapusher_logger.debug("api_key: %s............" % api_key[0:8])
     datapusher_logger.debug("ckan_url: %s" % ckan_url)
+    datapusher_logger.debug("original_url: %s" % original_url)
+    datapusher_logger.debug("original_base_url: %s" % original_base_url)
+
 
     try:
         resource = get_resource(resource_id, ckan_url, api_key)
@@ -377,7 +383,25 @@ def push_to_datastore(task_id, input, dry_run=False):
         return
 
     # check scheme
+    # this url is the external url of the resource if behind reverse proxy
+    # we had to replace this url_base with callback_url_base
     url = resource.get('url')
+
+    # here we replace original_base_url, with ckan_url in the url variable
+    # example:
+    # ckan_url: http://ckan:5000/
+    # original_base_url: https://ckanportal.mydomain.com
+    #
+    # url:
+    # before: https://ckanportal.mydomain.com/dataset/515fa5c0-058e-4b53-b5ed-74ff38aca428/resource/203de699-c2fc-40f7-a740-0369a2ebaa78/download/test.csv
+    # after:  http://ckan:5000/dataset/515fa5c0-058e-4b53-b5ed-74ff38aca428/resource/203de699-c2fc-40f7-a740-0369a2ebaa78/download/test.csv
+    if (original_base_url):
+        original_base_url_strip = original_base_url.rstrip("/")
+        ckan_url_strip = ckan_url.rstrip("/")
+        url = url.replace(original_base_url_strip, ckan_url_strip)
+
+    datapusher_logger.debug("Verifying resource from url: %s" % url)
+
     scheme = urlsplit(url).scheme
     if scheme not in ('http', 'https', 'ftp'):
         raise util.JobError(
