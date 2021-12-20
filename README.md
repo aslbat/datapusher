@@ -163,6 +163,21 @@ added to the `[app:main]` section of your CKAN configuration file :
 
     ckan.datapusher.url = http://127.0.0.1:8800/
 
+and with a published url of ckan different from the internal url of ckan visible to datapusher (as in a reverse proxy configuration):
+
+    ckan.datapusher.callback_url_base =  http://ckan:5000
+
+Must be also configured the authentication using jwt tokens, modifying the following CKAN configurations:
+
+    api_token.jwt.encode.secret = string:samerandomstring
+    api_token.jwt.decode.secret = string:samerandomstring
+
+Then generating a new JWT token in the Administration section for the user default (the user with the same name of site_id)
+which is used by datapusher and configuring the generated token with this configuration in the CKAN ini:
+
+    ckan.datapusher.token = adsadasdsads.sdsad____
+
+
 There are other CKAN configuration options that allow to customize the CKAN - DataPusher
 integation. Please refer to the [DataPusher Settings](https://docs.ckan.org/en/latest/maintaining/configuration.html#datapusher-settings) section in the CKAN documentation for more details.
 
@@ -181,7 +196,7 @@ Here's a summary of the options available.
 | CHUNK_SIZE | '16384' | Chunk size when processing the data file |
 | CHUNK_INSERT_ROWS | '250' | Number of records to send a request to datastore |
 | DOWNLOAD_TIMEOUT | '30' | Download timeout for requesting the file |
-| SSL_VERIFY | False | Do not validate SSL certificates when requesting the data file (*Warning*: Do not use this setting in production) |
+| DATAPUSHER_SSL_VERIFY | True | Do not validate SSL certificates when requesting the data file (*Warning*: Do not use this setting in production). Was used a different name from ckan SSL_VERIFY to prevent overlapping with the value set in the ckan imports |
 | TYPES | [messytables.StringType, messytables.DecimalType, messytables.IntegerType, messytables.DateUtilType] | [Messytables][] types used internally, can be modified to customize the type guessing |
 | TYPE_MAPPING | {'String': 'text', 'Integer': 'numeric', 'Decimal': 'numeric', 'DateUtil': 'timestamp'} | Internal Messytables type mapping |
 
