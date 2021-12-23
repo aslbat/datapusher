@@ -37,17 +37,6 @@ CHUNK_INSERT_ROWS = web.app.config.get('CHUNK_INSERT_ROWS') or 250
 DOWNLOAD_TIMEOUT = web.app.config.get('DOWNLOAD_TIMEOUT') or 30
 USE_PROXY = 'DOWNLOAD_PROXY' in web.app.config
 
-DATAPUSHER_LOGGING_LEVEL   = web.app.config.get('DATAPUSHER_LOGGING_LEVEL', logging.INFO)
-DATAPUSHER_LOGGING_HANDLER = web.app.config.get('DATAPUSHER_LOGGING_HANDLER', logging.StreamHandler(sys.stdout))
-
-datapusher_logger = logging.getLogger("DATAPUSHER SERVICE")
-datapusher_logger_handler = DATAPUSHER_LOGGING_HANDLER
-datapusher_logger.setLevel(DATAPUSHER_LOGGING_LEVEL)
-datapusher_logger_handler.setLevel(DATAPUSHER_LOGGING_LEVEL)
-datapusher_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-datapusher_logger_handler.setFormatter(datapusher_formatter)
-datapusher_logger.addHandler(datapusher_logger_handler)
-
 if USE_PROXY:
     DOWNLOAD_PROXY = web.app.config.get('DOWNLOAD_PROXY')
 
@@ -337,10 +326,10 @@ def push_to_datastore(task_id, input, dry_run=False):
     :type dry_run: boolean
 
     '''
-    datapusher_logger.debug("Executing push_to_datastore job")
-    datapusher_logger.debug("DATAPUSHER_SSL_VERIFY %s" % DATAPUSHER_SSL_VERIFY)
+    logging.debug("Executing push_to_datastore job")
+    logging.debug("DATAPUSHER_SSL_VERIFY %s" % DATAPUSHER_SSL_VERIFY)
 
-    # This response_logger is used to report job result to ckan, use datapusher_logger as service logger
+    # This response_logger is used to report job activity to ckan
     handler = util.StoringHandler(task_id, input)
     response_logger = logging.getLogger(task_id)
     response_logger.addHandler(handler)
@@ -362,13 +351,12 @@ def push_to_datastore(task_id, input, dry_run=False):
 
     api_key = input.get('api_key')
 
-    datapusher_logger.debug("callback_url: %s" % callback_url)
-    datapusher_logger.debug("resource_id: %s" % resource_id)
-    datapusher_logger.debug("api_key: %s............" % api_key[0:8])
-    datapusher_logger.debug("ckan_url: %s" % ckan_url)
-    datapusher_logger.debug("original_url: %s" % original_url)
-    datapusher_logger.debug("original_base_url: %s" % original_base_url)
-
+    logging.debug("callback_url: %s" % callback_url)
+    logging.debug("resource_id: %s" % resource_id)
+    logging.debug("api_key: %s............" % api_key[0:8])
+    logging.debug("ckan_url: %s" % ckan_url)
+    logging.debug("original_url: %s" % original_url)
+    logging.debug("original_base_url: %s" % original_base_url)
 
     try:
         resource = get_resource(resource_id, ckan_url, api_key)
@@ -400,7 +388,7 @@ def push_to_datastore(task_id, input, dry_run=False):
         ckan_url_strip = ckan_url.rstrip("/")
         url = url.replace(original_base_url_strip, ckan_url_strip)
 
-    datapusher_logger.debug("Verifying resource from url: %s" % url)
+    logging.debug("Verifying resource from url: %s" % url)
 
     scheme = urlsplit(url).scheme
     if scheme not in ('http', 'https', 'ftp'):
