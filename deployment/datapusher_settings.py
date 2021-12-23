@@ -31,14 +31,6 @@ CHUNK_INSERT_ROWS = int(os.environ.get('DATAPUSHER_CHUNK_INSERT_ROWS', '250'))
 DOWNLOAD_TIMEOUT = int(os.environ.get('DATAPUSHER_DOWNLOAD_TIMEOUT', '30'))
 
 #
-# Verify SSL (Prevent overlappung with CKAN SSL_VERIFY)
+# Verify SSL (Prevent overlapping with CKAN SSL_VERIFY)
 #
 DATAPUSHER_SSL_VERIFY = os.environ.get('DATAPUSHER_SSL_VERIFY', True)
-
-#
-# Log configuration
-#
-DATAPUSHER_LOGGING_LEVEL    = logging.DEBUG
-DATAPUSHER_LOGGING_HANDLER  = logging.StreamHandler(sys.stdout)
-#DATAPUSHER_LOGGING_HANDLER = logging.FileHandler('/tmp/datapusher.log')
-
